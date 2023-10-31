@@ -73,7 +73,7 @@ export function ScrollingPipe({
 	let canvas: HTMLCanvasElement = null!
 	const { width: canvasWidth, height: canvasHeight } = useWindowSize(200)
 
-	onMount(async () => {
+	onMount(() => {
 		const ctx = canvas.getContext('2d')!
 		const [imageX, setImageX] = createSignal(canvasWidth())
 		const [imageCopyX, setImageCopyX] = createSignal(width())
