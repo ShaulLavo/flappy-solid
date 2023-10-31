@@ -19,7 +19,6 @@ interface ImageData {
 	lqipUrl: string
 }
 const getImageUrl = (imageId: string, width?: number, height?: number) => {
-	console.log(width, height)
 	const highQualityUrl = cld.image(imageId).quality('auto').format('auto')
 
 	if (height) highQualityUrl.resize(fill(undefined, height.toFixed(0)))
@@ -44,7 +43,6 @@ const getImageUrls = (
 	width?: number,
 	height?: number
 ): ImageData[] => {
-	console.log(imageIds.map(imageId => getImageUrl(imageId, width, height)))
 	return imageIds.map(imageId => getImageUrl(imageId, width, height))
 }
 

@@ -1,23 +1,26 @@
 import { onCleanup, createSignal } from 'solid-js'
-import debounce from 'just-debounce-it'
-function useWindowSize(
-	wait: number = 0,
-	callback?: {
-		(width: number, height: number): unknown
-	}
-) {
+function useWindowSize(callback?: {
+	(width: number, height: number): unknown
+}) {
 	const [width, setWidth] = createSignal(window.innerWidth)
 	const [height, setHeight] = createSignal(window.innerHeight)
 	const [prevWidth, setPrevWidth] = createSignal<number>(null!)
 	const [prevHeight, setPrevHeight] = createSignal<number>(null!)
-
-	const handleResize = debounce(() => {
+	const [baseWidth] = createSignal(width())
+	const [baseHeight] = createSignal(height())
+	const scaleX = () => width() / baseWidth()
+	const scaleY = () => height() / baseHeight()
+	const handleResize = () => {
+		console.log('scaleX', scaleX())
+		console.log('new width', baseWidth() * scaleX())
+		console.log('width', width())
+		console.log(baseWidth(), baseHeight())
 		setPrevWidth(width())
 		setPrevHeight(height())
 		setWidth(window.innerWidth)
 		setHeight(window.innerHeight)
 		callback?.(window.innerWidth, window.innerHeight)
-	}, wait)
+	}
 
 	window.addEventListener('resize', handleResize)
 
@@ -25,7 +28,16 @@ function useWindowSize(
 		window.removeEventListener('resize', handleResize)
 	})
 
-	return { width, height, prevWidth, prevHeight }
+	return {
+		width,
+		height,
+		prevWidth,
+		prevHeight,
+		baseWidth,
+		baseHeight,
+		scaleX,
+		scaleY,
+	}
 }
 
 export default useWindowSize

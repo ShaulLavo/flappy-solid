@@ -9,13 +9,11 @@ const preloadImage = async (url: string): Promise<HTMLImageElement> => {
 
 const preloadImages = async (imageUrls: string[]): Promise<HTMLImageElement[]> => {
     const preloadedImages: HTMLImageElement[] = [];
-    console.log('fetch!');
     for (const url of imageUrls) {
         const img = await preloadImage(url);
         preloadedImages.push(img);
     }
-    console.log('done!');
-    console.log(preloadedImages);
+
     return (await Promise.all(preloadedImages));
 
 };

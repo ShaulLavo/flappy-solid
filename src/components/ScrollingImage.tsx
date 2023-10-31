@@ -1,21 +1,19 @@
 import { Accessor, createSignal, onMount } from 'solid-js'
-import useFrame from './hooks/useFrame'
-import useWindowSize from './hooks/useWindowSize'
+import useFrame from '../hooks/useFrame'
+import useWindowSize from '../hooks/useWindowSize'
 
 export function ScrollingImage({
-	width,
-	height,
 	image,
 	speed,
 	widthOffset,
 }: {
-	width: Accessor<number>
-	height: Accessor<number>
 	image: Accessor<HTMLImageElement>
 	speed: () => number
 	widthOffset?: number
 }) {
 	let canvas: HTMLCanvasElement = null!
+	const { baseWidth, baseHeight } = useWindowSize()
+	const [width, height] = [baseWidth, baseHeight]
 	onMount(async () => {
 		const ctx = canvas.getContext('2d')!
 		const [imageX, setImageX] = createSignal(0)
@@ -71,7 +69,7 @@ export function ScrollingPipe({
 	xOffset?: () => number
 }) {
 	let canvas: HTMLCanvasElement = null!
-	const { width: canvasWidth, height: canvasHeight } = useWindowSize(200)
+	const { baseWidth: canvasWidth, baseHeight: canvasHeight } = useWindowSize()
 
 	onMount(() => {
 		const ctx = canvas.getContext('2d')!

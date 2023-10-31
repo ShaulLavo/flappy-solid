@@ -1,18 +1,32 @@
 import { Index, createResource, createSignal } from 'solid-js'
 import './App.css'
-import { ScrollingPipe } from './ScrollingImage'
-import { Background, Foreground } from './ScrollingLayer'
-import { getImageUrls } from './cloudinary.service'
+import { ScrollingPipe } from './components/ScrollingImage'
+import { Background, Foreground } from './components/ScrollingLayer'
+import { getImageUrls } from './services/cloudinary.service'
 import useWindowSize from './hooks/useWindowSize'
-import { preloadImages } from './image.service'
+import { preloadImages } from './services/image.service'
 
 function App() {
+	const { scaleX, scaleY, baseWidth, baseHeight, width, height } =
+		useWindowSize()
+
+	const numberToPixels = (n: number) => String(Math.ceil(n)) + 'px'
+
 	return (
-		<>
+		<div
+			style={{
+				transform: `scaleX(${scaleX()}) scaleY(${scaleY()})`,
+				width: numberToPixels(baseWidth()),
+				height: numberToPixels(baseHeight()),
+				position: 'absolute',
+				top: numberToPixels((height() - baseHeight()) / 2),
+				left: numberToPixels((width() - baseWidth()) / 2), // center the canvas
+			}}
+		>
 			<Background />
-			<Pipes />
+			{/* <Pipes /> */}
 			<Foreground />
-		</>
+		</div>
 	)
 }
 export default App
@@ -69,7 +83,7 @@ function getScaledImageDimensions(
 }
 
 function Pipes() {
-	const { width, height } = useWindowSize(200)
+	const { width, height } = useWindowSize()
 	const yConstraints = {
 		minDistance: 120,
 		maxUp: height() - height() / 3,
@@ -85,7 +99,6 @@ function Pipes() {
 	const getOffset = (i: number) => () => yOffset()[i]
 	const onEndReached = () => {
 		setYOffset(generateRandomValues(yConstraints))
-		console.log(yOffset())
 	}
 
 	const scaledDimensions = () => getScaledImageDimensions(width(), height())

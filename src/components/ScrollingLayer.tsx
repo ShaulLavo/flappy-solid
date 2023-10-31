@@ -1,8 +1,7 @@
 import { Index, createResource, createSignal } from 'solid-js'
 import { ScrollingImage } from './ScrollingImage'
 import { getImageUrls } from './cloudinary.service'
-import useWindowSize from './hooks/useWindowSize'
-import { preloadImages } from './image.service'
+import { preloadImages } from './services/image.service'
 
 interface LayerProps {
 	speedMultipliers: Record<string, number>
@@ -12,13 +11,11 @@ interface LayerProps {
 const ScrollingLayer = ({ speedMultipliers, fallbackText }: LayerProps) => {
 	const SPEED = 1
 	const [speed] = createSignal(SPEED)
-
 	const imageSpeedMap: Record<string, () => number> = {}
 	for (const key in speedMultipliers) {
 		imageSpeedMap[key] = () => speedMultipliers[key] * speed()
 	}
 
-	const { width, height } = useWindowSize(200)
 	const [images] = createResource(() =>
 		preloadImages(
 			getImageUrls(Object.keys(speedMultipliers)).map(x => x.highQualityUrl)
@@ -29,8 +26,6 @@ const ScrollingLayer = ({ speedMultipliers, fallbackText }: LayerProps) => {
 		<Index fallback={<div>{fallbackText}</div>} each={images()}>
 			{(image, i) => (
 				<ScrollingImage
-					height={height}
-					width={width}
 					image={image}
 					speed={Object.values(imageSpeedMap)[i]}
 					widthOffset={6}
