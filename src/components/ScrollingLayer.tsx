@@ -1,7 +1,7 @@
 import { Index, createResource, createSignal } from 'solid-js'
 import { ScrollingImage } from './ScrollingImage'
-import { getImageUrls } from './cloudinary.service'
-import { preloadImages } from './services/image.service'
+import { getImageUrls } from '../services/cloudinary.service'
+import { preloadImages } from '../services/image.service'
 
 interface LayerProps {
 	speedMultipliers: Record<string, number>
