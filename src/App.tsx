@@ -24,7 +24,7 @@ function App() {
 			}}
 		>
 			<Background />
-			{/* <Pipes /> */}
+			<Pipes />
 			<Foreground />
 		</div>
 	)
@@ -82,40 +82,40 @@ function getScaledImageDimensions(
 	}
 }
 
-// function Pipes() {
-// 	const { width, height } = useWindowSize()
-// 	const yConstraints = {
-// 		minDistance: 120,
-// 		maxUp: height() - height() / 3,
-// 		minUp: height() / 3,
-// 		maxDown: 0,
-// 		minDown: 0,
-// 	} as const
+function Pipes() {
+	const { width, height } = useWindowSize()
+	const yConstraints = {
+		minDistance: 120,
+		maxUp: height() - height() / 3,
+		minUp: height() / 3,
+		maxDown: 0,
+		minDown: 0,
+	} as const
 
-// 	const [images] = createResource(() =>
-// 		preloadImages(getImageUrls(['pipe']).map(x => x.highQualityUrl))
-// 	)
-// 	const [yOffset, setYOffset] = createSignal(generateRandomValues(yConstraints))
-// 	const getOffset = (i: number) => () => yOffset()[i]
-// 	const onEndReached = () => {
-// 		setYOffset(generateRandomValues(yConstraints))
-// 	}
+	const [images] = createResource(() =>
+		preloadImages(getImageUrls(['pipe']).map(x => x.highQualityUrl))
+	)
+	const [yOffset, setYOffset] = createSignal(generateRandomValues(yConstraints))
+	const getOffset = (i: number) => () => yOffset()[i]
+	const onEndReached = () => {
+		setYOffset(generateRandomValues(yConstraints))
+	}
 
-// 	const scaledDimensions = () => getScaledImageDimensions(width(), height())
-// 	return (
-// 		<div class="canvas-container">
-// 			<Index each={images()}>
-// 				{(image, i) => (
-// 					<ScrollingPipe
-// 						height={() => scaledDimensions().scaledHeight}
-// 						width={() => scaledDimensions().scaledWidth}
-// 						image={image}
-// 						speed={() => 3}
-// 						yOffset={getOffset(i)}
-// 						onEndReached={onEndReached}
-// 					/>
-// 				)}
-// 			</Index>
-// 		</div>
-// 	)
-// }
+	const scaledDimensions = () => getScaledImageDimensions(width(), height())
+	return (
+		<div class="canvas-container">
+			<Index each={images()}>
+				{(image, i) => (
+					<ScrollingPipe
+						height={() => scaledDimensions().scaledHeight}
+						width={() => scaledDimensions().scaledWidth}
+						image={image}
+						speed={() => 3}
+						yOffset={getOffset(i)}
+						onEndReached={onEndReached}
+					/>
+				)}
+			</Index>
+		</div>
+	)
+}
