@@ -1,7 +1,8 @@
-import { Index, createResource, createSignal } from 'solid-js'
-import { ScrollingImage } from './ScrollingImage'
+import { Index, createResource, createSignal, onMount } from 'solid-js'
+import { ScrollingImage, ScrollingImageProps } from './ScrollingImage'
 import { getImageUrls } from '../services/cloudinary.service'
 import { preloadImages } from '../services/image.service'
+import { shouldUseWorker } from '../App'
 
 interface LayerProps {
 	speedMultipliers: Record<string, number>
@@ -12,6 +13,7 @@ const ScrollingLayer = ({ speedMultipliers, fallbackText }: LayerProps) => {
 	const SPEED = 1
 	const [speed] = createSignal(SPEED)
 	const imageSpeedMap: Record<string, () => number> = {}
+
 	for (const key in speedMultipliers) {
 		imageSpeedMap[key] = () => speedMultipliers[key] * speed()
 	}
@@ -22,15 +24,25 @@ const ScrollingLayer = ({ speedMultipliers, fallbackText }: LayerProps) => {
 		)
 	)
 
+	const canvases: OffscreenCanvas[] = []
+
+	onMount(() => {
+		if (!shouldUseWorker) return
+	})
+
 	return (
 		<Index fallback={<div>{fallbackText}</div>} each={images()}>
-			{(image, i) => (
-				<ScrollingImage
-					image={image}
-					speed={Object.values(imageSpeedMap)[i]}
-					widthOffset={6}
-				/>
-			)}
+			{(image, i) => {
+				// Construct props inside the loop to have access to image and i
+				const props = {
+					image: image, // or just "image," if using ES6 property shorthand
+					speed: Object.values(imageSpeedMap)[i],
+					widthOffset: 6,
+				} as ScrollingImageProps
+				if (shouldUseWorker) props.offscreen = canvases[i]
+				// Pass props to ScrollingImage
+				return <ScrollingImage {...props} />
+			}}
 		</Index>
 	)
 }

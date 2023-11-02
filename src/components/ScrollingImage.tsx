@@ -2,19 +2,21 @@ import { Accessor, createSignal, onMount } from 'solid-js'
 import useFrame from '../hooks/useFrame'
 import useWindowSize from '../hooks/useWindowSize'
 
-export function ScrollingImage({
-	image,
-	speed,
-	widthOffset,
-}: {
+export interface ScrollingImageProps {
 	image: Accessor<HTMLImageElement>
 	speed: () => number
 	widthOffset?: number
-}) {
+	offscreen?: OffscreenCanvas
+}
+export function ScrollingImage(props: ScrollingImageProps) {
 	let canvas: HTMLCanvasElement = null!
 	const { baseWidth, baseHeight } = useWindowSize()
 	const [width, height] = [baseWidth, baseHeight]
 	onMount(async () => {
+		const { image, speed, widthOffset } = props
+		if ('offscreen' in props) {
+			props.offscreen = canvas.transferControlToOffscreen()
+		}
 		const ctx = canvas.getContext('2d')!
 		const [imageX, setImageX] = createSignal(0)
 		const [imageCopyX, setImageCopyX] = createSignal(width())
