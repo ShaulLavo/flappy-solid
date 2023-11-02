@@ -2,29 +2,23 @@ import { Index, createResource, createSignal, onMount } from 'solid-js'
 import { ScrollingImage, ScrollingImageProps } from './ScrollingImage'
 import { getImageUrls } from '../services/cloudinary.service'
 import { preloadImages } from '../services/image.service'
-import { shouldUseWorker } from '../App'
+import { shouldUseWorker, speed } from '../App'
 
 interface LayerProps {
-	speedMultipliers: Record<string, number>
+	imageSpeedMap: Record<string, () => number>
 	fallbackText: string
 }
 
-const ScrollingLayer = ({ speedMultipliers, fallbackText }: LayerProps) => {
-	const SPEED = 1
-	const [speed] = createSignal(SPEED)
-	const imageSpeedMap: Record<string, () => number> = {}
-
-	for (const key in speedMultipliers) {
-		imageSpeedMap[key] = () => speedMultipliers[key] * speed()
-	}
-
+const ScrollingLayer = ({ imageSpeedMap, fallbackText }: LayerProps) => {
+	const length = Object.keys(imageSpeedMap).length
 	const [images] = createResource(() =>
 		preloadImages(
-			getImageUrls(Object.keys(speedMultipliers)).map(x => x.highQualityUrl)
+			getImageUrls(Object.keys(imageSpeedMap)).map(x => x.highQualityUrl)
 		)
 	)
-
-	const canvases: OffscreenCanvas[] = []
+	const canvases: OffscreenCanvas[] = shouldUseWorker
+		? new Array(length).fill(null)
+		: undefined!
 
 	onMount(() => {
 		if (!shouldUseWorker) return
@@ -48,29 +42,29 @@ const ScrollingLayer = ({ speedMultipliers, fallbackText }: LayerProps) => {
 }
 
 export function Background() {
-	const speedMultipliers = {
-		sky: 1,
-		mountains: 2,
-		trees: 2.75,
+	const imageSpeedMap = {
+		sky: () => 1 * speed(),
+		mountains: () => 2 * speed(),
+		trees: () => 2.75 * speed(),
 	}
 
 	return (
 		<ScrollingLayer
-			speedMultipliers={speedMultipliers}
+			imageSpeedMap={imageSpeedMap}
 			fallbackText="No Background"
 		/>
 	)
 }
 
 export function Foreground() {
-	const speedMultipliers = {
-		ground: 3,
-		grass: 3,
+	const imageSpeedMap = {
+		ground: () => 3 * speed(),
+		grass: () => 3 * speed(),
 	}
 
 	return (
 		<ScrollingLayer
-			speedMultipliers={speedMultipliers}
+			imageSpeedMap={imageSpeedMap}
 			fallbackText="No Foreground"
 		/>
 	)

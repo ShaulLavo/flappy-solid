@@ -8,10 +8,10 @@ type FrameCallbackArgs = {
 
 type FrameCallback = (args: FrameCallbackArgs) => void
 
-const frameEntries: {
+const frameEntries: Set<{
 	callback: FrameCallback
 	timingHelper: (time: number) => TimingInfo
-}[] = []
+}> = new Set()
 
 let animationFrameId: number | null = null
 
@@ -24,25 +24,27 @@ const animateShared = (time: number) => {
 			timeSinceStart: timingHelperResult[1],
 		})
 	})
-	animationFrameId = requestAnimationFrame(animateShared)
+
+	// Continue the loop only if we have entries
+	if (frameEntries.size > 0) {
+		requestAnimationFrame(animateShared)
+	} else animationFrameId = null
 }
 
 function useFrame(callback: FrameCallback): void {
 	const timingHelper = createTimingHelper()
 
-	frameEntries.push({ callback, timingHelper })
+	const entry = { callback, timingHelper }
+	frameEntries.add(entry)
 
-	if (animationFrameId === null) {
+	if (!animationFrameId) {
 		animationFrameId = requestAnimationFrame(animateShared)
 	}
 
 	onCleanup(() => {
-		const index = frameEntries.findIndex(entry => entry.callback === callback)
-		if (index > -1) {
-			frameEntries.splice(index, 1)
-		}
+		frameEntries.delete(entry)
 
-		if (frameEntries.length === 0 && animationFrameId !== null) {
+		if (frameEntries.size === 0 && animationFrameId !== null) {
 			cancelAnimationFrame(animationFrameId)
 			animationFrameId = null
 		}
@@ -59,8 +61,8 @@ function createTimingHelper(): (currentTime: number) => TimingInfo {
 		if (startTime === null) startTime = currentTime
 		if (lastTime === null) lastTime = currentTime
 
-		const deltaTime = currentTime - lastTime
-		const timeSinceStart = currentTime - startTime
+		const deltaTime = currentTime - (lastTime ?? 0)
+		const timeSinceStart = currentTime - (startTime ?? 0)
 
 		lastTime = currentTime
 

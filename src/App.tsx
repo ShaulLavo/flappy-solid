@@ -36,8 +36,9 @@ function getBrowserName() {
 
 //TODO: move to a global file or store maybe
 //globals
-export const shouldUseWorker = true
+export const shouldUseWorker = false
 // const shouldUseWorker = getBrowserName() === 'Firefox'
+export const [speed] = createSignal(1)
 
 function App() {
 	const { scaleX, scaleY, baseWidth, baseHeight, width, height } =
