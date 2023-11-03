@@ -5,18 +5,22 @@ function getBrowserName() {
 
 	if (!matches) return 'unknown'
 
-	const browser = matches[1]
+	let browser = matches[1]
+
+	if (browser === 'Chrome') {
+		if (userAgent.includes('Edg')) {
+			browser = 'Edge'
+		} else if (userAgent.includes('Safari') && !userAgent.includes('Edg')) {
+			browser = 'Chrome'
+		}
+	}
 
 	switch (browser) {
 		case 'Opera':
 		case 'OPR':
 			return 'Opera'
-		case 'Edg':
-			return 'Edge'
-		case 'Chrome':
-			return userAgent.includes('Safari') ? 'Safari' : 'Chrome'
 		case 'Safari':
-			return 'Safari'
+			return userAgent.includes('Chrome') ? 'Chrome' : 'Safari'
 		case 'Firefox':
 			return 'Firefox'
 		case 'MSIE':

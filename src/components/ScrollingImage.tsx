@@ -31,22 +31,28 @@ export function ScrollingImage(props: ScrollingImageProps) {
 			current: () => number,
 			other: () => number,
 			set: (x: number) => void,
-			delta: number
+			delta: number,
+			number: number
 		) => {
 			const newX = current() - 100 * ((delta / 1000) * speed())
-
+			console.log({ newX, number })
 			set(newX)
 			if (newX + width() < 0) {
 				set(other() + width())
 			}
 		}
 
-		useFrame(({ delta, FPS }) => {
-			console.log('FPS', FPS)
-			updatePosition(imageX, imageCopyX, setImageX, delta)
-			updatePosition(imageCopyX, imageX, setImageCopyX, delta)
+		useFrame(({ delta }) => {
+			updatePosition(imageX, imageCopyX, setImageX, delta, 1)
+			updatePosition(imageCopyX, imageX, setImageCopyX, delta, 2)
 			ctx.clearRect(0, 0, width(), height())
-			ctx.drawImage(image(), imageX(), 0, width(), height())
+			ctx.drawImage(
+				image(),
+				imageX(),
+				0,
+				widthOffset ? width() + widthOffset : width(),
+				height()
+			)
 			ctx.drawImage(
 				image(),
 				imageCopyX(),
@@ -57,7 +63,7 @@ export function ScrollingImage(props: ScrollingImageProps) {
 		})
 	})
 	return (
-		<div class="canvas-container">
+		<div class="absolute left-0 top-0 overflow-hidden">
 			<canvas ref={canvas} width={width()} height={height()} />
 		</div>
 	)
@@ -120,9 +126,5 @@ export function ScrollingPipe({
 			)
 		})
 	})
-	return (
-		<div class="canvas-container">
-			<canvas ref={canvas} width={canvasWidth()} height={canvasHeight()} />
-		</div>
-	)
+	return <canvas ref={canvas} width={canvasWidth()} height={canvasHeight()} />
 }

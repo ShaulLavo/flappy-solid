@@ -6,11 +6,10 @@ import {
 	createSignal,
 } from 'solid-js'
 import { shouldUseWorker, speed } from '../globals'
-import useWindowSize from '../hooks/useWindowSize'
 import { getImageUrls } from '../services/cloudinary.service'
 import { preloadBitmaps, preloadImages } from '../services/image.service'
-import { createWorkerTask } from '../services/worker.service'
 import { ScrollingImage, ScrollingImageProps } from './ScrollingImage'
+import { WorkerMethods, workerService } from '../services/worker.service'
 
 interface LayerProps {
 	imageSpeedMap: Record<string, () => number>
@@ -18,31 +17,30 @@ interface LayerProps {
 }
 
 const ScrollingLayer = ({ imageSpeedMap, fallbackText }: LayerProps) => {
-	const { width, height } = useWindowSize()
-
 	const imageNames = Object.keys(imageSpeedMap)
 	const [images] = createResource<ImageBitmap[] | HTMLImageElement[]>(() => {
 		const urls = getImageUrls(imageNames).map(x => x.highQualityUrl)
 		return shouldUseWorker() ? preloadBitmaps(urls) : preloadImages(urls)
 	})
-
+	//@ts-ignore saving worker for later
+	const [worker, setWorker] = createSignal<WorkerMethods>()
 	//TODO: find better way to handle worker
-	const [canvases, setCanvases] = shouldUseWorker()
-		? createSignal<OffscreenCanvas[]>([])
-		: [null!, null!]
+	const [canvases, setCanvases] = createSignal<OffscreenCanvas[]>([])
 
-	const track = shouldUseWorker()
-		? createReaction(() =>
-				createWorkerTask(
-					imageNames,
-					images() as ImageBitmap[],
-					canvases(),
-					width(),
-					height()
-				)
-		  )
-		: null!
-	track?.(() => canvases?.())
+	if (shouldUseWorker()) {
+		const track = createReaction(async () => {
+			let workerMethods = await workerService.initializeRenderer(
+				imageNames,
+				images() as ImageBitmap[],
+				canvases(),
+				imageSpeedMap
+			)
+			setWorker(workerMethods)
+			workerMethods.startAutoScroll()
+		})
+
+		track(() => canvases())
+	}
 
 	return (
 		<Suspense fallback={<div>Loading..</div>}>

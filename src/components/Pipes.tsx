@@ -77,7 +77,7 @@ export function Pipes() {
 
 	const scaledDimensions = () => getScaledImageDimensions(width(), height())
 	return (
-		<div class="canvas-container">
+		<div class="absolute left-0 top-0 overflow-hidden">
 			<Index each={images()}>
 				{(image, i) => (
 					<ScrollingPipe
