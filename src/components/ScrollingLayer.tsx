@@ -1,8 +1,16 @@
-import { Index, createResource, createSignal, onMount } from 'solid-js'
-import { ScrollingImage, ScrollingImageProps } from './ScrollingImage'
+import {
+	Index,
+	Suspense,
+	createReaction,
+	createResource,
+	createSignal,
+} from 'solid-js'
+import { shouldUseWorker, speed } from '../globals'
+import useWindowSize from '../hooks/useWindowSize'
 import { getImageUrls } from '../services/cloudinary.service'
-import { preloadImages } from '../services/image.service'
-import { shouldUseWorker, speed } from '../App'
+import { preloadBitmaps, preloadImages } from '../services/image.service'
+import { createWorkerTask } from '../services/worker.service'
+import { ScrollingImage, ScrollingImageProps } from './ScrollingImage'
 
 interface LayerProps {
 	imageSpeedMap: Record<string, () => number>
@@ -10,34 +18,47 @@ interface LayerProps {
 }
 
 const ScrollingLayer = ({ imageSpeedMap, fallbackText }: LayerProps) => {
-	const length = Object.keys(imageSpeedMap).length
-	const [images] = createResource(() =>
-		preloadImages(
-			getImageUrls(Object.keys(imageSpeedMap)).map(x => x.highQualityUrl)
-		)
-	)
-	const canvases: OffscreenCanvas[] = shouldUseWorker
-		? new Array(length).fill(null)
-		: undefined!
+	const { width, height } = useWindowSize()
 
-	onMount(() => {
-		if (!shouldUseWorker) return
+	const imageNames = Object.keys(imageSpeedMap)
+	const [images] = createResource<ImageBitmap[] | HTMLImageElement[]>(() => {
+		const urls = getImageUrls(imageNames).map(x => x.highQualityUrl)
+		return shouldUseWorker() ? preloadBitmaps(urls) : preloadImages(urls)
 	})
 
+	//TODO: find better way to handle worker
+	const [canvases, setCanvases] = shouldUseWorker()
+		? createSignal<OffscreenCanvas[]>([])
+		: [null!, null!]
+
+	const track = shouldUseWorker()
+		? createReaction(() =>
+				createWorkerTask(
+					imageNames,
+					images() as ImageBitmap[],
+					canvases(),
+					width(),
+					height()
+				)
+		  )
+		: null!
+	track?.(() => canvases?.())
+
 	return (
-		<Index fallback={<div>{fallbackText}</div>} each={images()}>
-			{(image, i) => {
-				// Construct props inside the loop to have access to image and i
-				const props = {
-					image: image, // or just "image," if using ES6 property shorthand
-					speed: Object.values(imageSpeedMap)[i],
-					widthOffset: 6,
-				} as ScrollingImageProps
-				if (shouldUseWorker) props.offscreen = canvases[i]
-				// Pass props to ScrollingImage
-				return <ScrollingImage {...props} />
-			}}
-		</Index>
+		<Suspense fallback={<div>Loading..</div>}>
+			<Index fallback={<div>{fallbackText}</div>} each={images()}>
+				{(image, i) => {
+					const props = {
+						image: image,
+						speed: Object.values(imageSpeedMap)[i],
+						widthOffset: 6,
+					} as ScrollingImageProps
+					if (shouldUseWorker()) props.offscreenSetter = setCanvases
+
+					return <ScrollingImage {...props} />
+				}}
+			</Index>
+		</Suspense>
 	)
 }
 

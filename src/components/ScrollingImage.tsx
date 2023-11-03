@@ -1,4 +1,4 @@
-import { Accessor, createSignal, onMount } from 'solid-js'
+import { Accessor, Setter, createSignal, onMount } from 'solid-js'
 import useFrame from '../hooks/useFrame'
 import useWindowSize from '../hooks/useWindowSize'
 
@@ -6,16 +6,22 @@ export interface ScrollingImageProps {
 	image: Accessor<HTMLImageElement>
 	speed: () => number
 	widthOffset?: number
-	offscreen?: OffscreenCanvas
+	offscreenSetter?: Setter<OffscreenCanvas[]>
+	bitmapSetter?: Setter<ImageBitmap[]>
 }
 export function ScrollingImage(props: ScrollingImageProps) {
 	let canvas: HTMLCanvasElement = null!
-	const { baseWidth, baseHeight } = useWindowSize()
-	const [width, height] = [baseWidth, baseHeight]
+	const { baseWidth: width, baseHeight: height } = useWindowSize()
+
 	onMount(async () => {
 		const { image, speed, widthOffset } = props
-		if ('offscreen' in props) {
-			props.offscreen = canvas.transferControlToOffscreen()
+
+		if ('offscreenSetter' in props) {
+			props.offscreenSetter!(current => [
+				...current,
+				canvas.transferControlToOffscreen(),
+			])
+			return
 		}
 		const ctx = canvas.getContext('2d')!
 		const [imageX, setImageX] = createSignal(0)
@@ -24,18 +30,21 @@ export function ScrollingImage(props: ScrollingImageProps) {
 		const updatePosition = (
 			current: () => number,
 			other: () => number,
-			set: (x: number) => void
+			set: (x: number) => void,
+			delta: number
 		) => {
-			const newX = current() - speed()
+			const newX = current() - 100 * ((delta / 1000) * speed())
+
 			set(newX)
 			if (newX + width() < 0) {
 				set(other() + width())
 			}
 		}
 
-		useFrame(() => {
-			updatePosition(imageX, imageCopyX, setImageX)
-			updatePosition(imageCopyX, imageX, setImageCopyX)
+		useFrame(({ delta, FPS }) => {
+			console.log('FPS', FPS)
+			updatePosition(imageX, imageCopyX, setImageX, delta)
+			updatePosition(imageCopyX, imageX, setImageCopyX, delta)
 			ctx.clearRect(0, 0, width(), height())
 			ctx.drawImage(image(), imageX(), 0, width(), height())
 			ctx.drawImage(

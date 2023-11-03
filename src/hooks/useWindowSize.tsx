@@ -11,10 +11,6 @@ function useWindowSize(callback?: {
 	const scaleX = () => width() / baseWidth()
 	const scaleY = () => height() / baseHeight()
 	const handleResize = () => {
-		console.log('scaleX', scaleX())
-		console.log('new width', baseWidth() * scaleX())
-		console.log('width', width())
-		console.log(baseWidth(), baseHeight())
 		setPrevWidth(width())
 		setPrevHeight(height())
 		setWidth(window.innerWidth)
