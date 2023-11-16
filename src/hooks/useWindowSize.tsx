@@ -1,15 +1,16 @@
-import { onCleanup, createSignal } from 'solid-js'
-function useWindowSize(callback?: {
-	(width: number, height: number): unknown
-}) {
+import { Owner, createEffect, createSignal, onCleanup, runWithOwner } from 'solid-js'
+import { setStore } from '../store'
+function useWindowSize(owner?: Owner, callback?: { (width: number, height: number): unknown }) {
 	const [width, setWidth] = createSignal(window.innerWidth)
 	const [height, setHeight] = createSignal(window.innerHeight)
 	const [prevWidth, setPrevWidth] = createSignal<number>(null!)
 	const [prevHeight, setPrevHeight] = createSignal<number>(null!)
 	const [baseWidth] = createSignal(width())
 	const [baseHeight] = createSignal(height())
-	const scaleX = () => width() / baseWidth()
-	const scaleY = () => height() / baseHeight()
+	createEffect(() => {
+		setStore('scaleX', width() / baseWidth())
+		setStore('scaleY', height() / baseHeight())
+	})
 	const handleResize = () => {
 		setPrevWidth(width())
 		setPrevHeight(height())
@@ -20,9 +21,18 @@ function useWindowSize(callback?: {
 
 	window.addEventListener('resize', handleResize)
 
-	onCleanup(() => {
-		window.removeEventListener('resize', handleResize)
-	})
+	if (owner) {
+		runWithOwner(
+			owner,
+			onCleanup(() => {
+				window.removeEventListener('resize', handleResize)
+			})
+		)
+	} else {
+		onCleanup(() => {
+			window.removeEventListener('resize', handleResize)
+		})
+	}
 
 	return {
 		width,
@@ -30,9 +40,7 @@ function useWindowSize(callback?: {
 		prevWidth,
 		prevHeight,
 		baseWidth,
-		baseHeight,
-		scaleX,
-		scaleY,
+		baseHeight
 	}
 }
 

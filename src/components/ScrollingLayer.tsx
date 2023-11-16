@@ -1,45 +1,89 @@
 import {
 	Index,
 	Suspense,
-	createReaction,
+	createEffect,
 	createResource,
 	createSignal,
+	getOwner,
+	on,
+	onCleanup,
+	runWithOwner
 } from 'solid-js'
-import { shouldUseWorker, speed } from '../globals'
 import { getImageUrls } from '../services/cloudinary.service'
 import { preloadBitmaps, preloadImages } from '../services/image.service'
+import { workerService } from '../services/worker.service'
 import { ScrollingImage, ScrollingImageProps } from './ScrollingImage'
-import { WorkerMethods, workerService } from '../services/worker.service'
+import useFrame from '../hooks/useFrame'
+import useWindowSize from '../hooks/useWindowSize'
+import { store } from '../store'
 
 interface LayerProps {
-	imageSpeedMap: Record<string, () => number>
+	speedMultiplierMap: Record<string, number>
 	fallbackText: string
 }
 
-const ScrollingLayer = ({ imageSpeedMap, fallbackText }: LayerProps) => {
-	const imageNames = Object.keys(imageSpeedMap)
-	const [images] = createResource<ImageBitmap[] | HTMLImageElement[]>(() => {
+const ScrollingLayer = ({ speedMultiplierMap, fallbackText }: LayerProps) => {
+	const { baseWidth, baseHeight } = useWindowSize(getOwner()!)
+	const imageNames = Object.keys(speedMultiplierMap)
+	console.log('imageNames', imageNames)
+	const [images, { refetch }] = createResource<ImageBitmap[] | HTMLImageElement[]>(() => {
 		const urls = getImageUrls(imageNames).map(x => x.highQualityUrl)
-		return shouldUseWorker() ? preloadBitmaps(urls) : preloadImages(urls)
+		return store.shouldUseWorker ? preloadBitmaps(urls) : preloadImages(urls)
 	})
-	//@ts-ignore saving worker for later
-	const [worker, setWorker] = createSignal<WorkerMethods>()
-	//TODO: find better way to handle worker
-	const [canvases, setCanvases] = createSignal<OffscreenCanvas[]>([])
 
-	if (shouldUseWorker()) {
-		const track = createReaction(async () => {
-			let workerMethods = await workerService.initializeRenderer(
-				imageNames,
-				images() as ImageBitmap[],
-				canvases(),
-				imageSpeedMap
+	const [offScreens, setOffScreens] = createSignal<OffscreenCanvas[]>([])
+	createEffect(on(() => store.shouldUseWorker, refetch))
+
+	if (store.shouldUseWorker) {
+		const owner = getOwner()!
+		let cleanUp: () => void
+		runWithOwner(owner, () =>
+			createEffect(
+				on(offScreens, async canvases => {
+					console.log('using worker')
+					console.log('offScreens', offScreens())
+					console.log('images', images())
+					if (!images()) return
+					const workerMethods = await workerService.initializeRenderer(
+						imageNames,
+						images() as ImageBitmap[],
+						canvases,
+						baseWidth(),
+						baseHeight(),
+						getOwner()!,
+						speedMultiplierMap
+					)
+					workerMethods.syncWithGlobalState()
+					if (store.shouldSyncWorkers) {
+						const updatePosition = (
+							current: number,
+							other: number,
+							delta: number,
+							speedMultiplier: number
+						) => {
+							const newX = current - 100 * ((delta / 1000) * speedMultiplier * store.scaledSpeed)
+							if (newX + baseWidth() < 0) {
+								return other + baseWidth()
+							}
+							return newX
+						}
+						console.log('syncing workers')
+						let imageX = 0
+						let imageCopyX = baseWidth()
+						console.log('getOwner()', owner)
+						cleanUp = useFrame(({ delta }) => {
+							imageNames.forEach(name => {
+								updatePosition(imageX, imageCopyX, delta, speedMultiplierMap[name])
+								updatePosition(imageCopyX, imageX, delta, speedMultiplierMap[name])
+
+								workerMethods.updateCanvasState(name, imageX, imageCopyX)
+							})
+						})
+						onCleanup(cleanUp)
+					} else workerMethods.startAutoScroll()
+				})
 			)
-			setWorker(workerMethods)
-			workerMethods.startAutoScroll()
-		})
-
-		track(() => canvases())
+		)
 	}
 
 	return (
@@ -48,10 +92,10 @@ const ScrollingLayer = ({ imageSpeedMap, fallbackText }: LayerProps) => {
 				{(image, i) => {
 					const props = {
 						image: image,
-						speed: Object.values(imageSpeedMap)[i],
-						widthOffset: 6,
+						speedMultiplier: Object.values(speedMultiplierMap)[i],
+						widthOffset: 6
 					} as ScrollingImageProps
-					if (shouldUseWorker()) props.offscreenSetter = setCanvases
+					if (store.shouldUseWorker) props.offscreenSetter = setOffScreens
 
 					return <ScrollingImage {...props} />
 				}}
@@ -61,30 +105,20 @@ const ScrollingLayer = ({ imageSpeedMap, fallbackText }: LayerProps) => {
 }
 
 export function Background() {
-	const imageSpeedMap = {
-		sky: () => 1 * speed(),
-		mountains: () => 2 * speed(),
-		trees: () => 2.75 * speed(),
+	const speedMultiplierMap = {
+		sky: 1,
+		mountains: 2,
+		trees: 2.75
 	}
 
-	return (
-		<ScrollingLayer
-			imageSpeedMap={imageSpeedMap}
-			fallbackText="No Background"
-		/>
-	)
+	return <ScrollingLayer speedMultiplierMap={speedMultiplierMap} fallbackText='No Background' />
 }
 
 export function Foreground() {
-	const imageSpeedMap = {
-		ground: () => 3 * speed(),
-		grass: () => 3 * speed(),
+	const speedMultiplierMap = {
+		ground: 3,
+		grass: 3
 	}
 
-	return (
-		<ScrollingLayer
-			imageSpeedMap={imageSpeedMap}
-			fallbackText="No Foreground"
-		/>
-	)
+	return <ScrollingLayer speedMultiplierMap={speedMultiplierMap} fallbackText='No Foreground' />
 }

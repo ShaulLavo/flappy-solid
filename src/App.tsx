@@ -1,52 +1,83 @@
 import { Show, createSignal } from 'solid-js'
-import './App.css'
 import { Background, Foreground } from './components/ScrollingLayer'
 import { SettingsMenu } from './components/SettingsMenu'
 import useWindowSize from './hooks/useWindowSize'
 import { getBrowserName, numberToPixels } from './services/utils'
 import { Modal } from './components/UI/Modal'
 import Button from './components/UI/Button'
+import { store } from './store'
+
+// BUGS
+//TODO scale speed with scaleX
+//TODO figure out offset to make images not break
+
+//Features
+
+//TODO add main loop that syncs all workers and make it opt in
+//TODO add FPS to info modal with portal maybe?
+
+//TODO add pause state
+
+const playSvg = () => (
+	<svg xmlns='http://www.w3.org/2000/svg' width='25' height='25' viewBox='0 0 24 24' fill='white'>
+		<polygon points='5 3 19 12 5 21 5 3'></polygon>
+	</svg>
+)
+
+const pauseSvg = () => (
+	<svg xmlns='http://www.w3.org/2000/svg' width='25' height='25' viewBox='0 0 24 24' fill='white'>
+		<rect x='6' y='4' width='4' height='16'></rect>
+		<rect x='14' y='4' width='4' height='16'></rect>
+	</svg>
+)
+
+function GameInfoModal() {
+	return (
+		<div class='fixed top-0 right-0 z-20 p-2'>
+			<div class='bg-black bg-opacity-90 text-white p-4  flex flex-col justify-center  shadow-2xl'>
+				<div>Browser: {getBrowserName()}</div>
+				<div>Thread: {store.shouldUseWorker ? 'Worker' : 'Main'}</div>
+			</div>
+		</div>
+	)
+}
 
 function App() {
-	const { scaleX, scaleY, baseWidth, baseHeight, width, height } =
-		useWindowSize()
+	const { baseWidth, baseHeight, width, height } = useWindowSize()
 
-	const [isModalOpen, setIsModalOpen] = createSignal(false)
+	const [isMainMenu, setIsMainMenu] = createSignal(false)
+	const [isGameInfo] = createSignal(true)
 
-	const toggleModal = () => setIsModalOpen(!isModalOpen())
+	const toggleMainMenu = () => setIsMainMenu(!isMainMenu())
 
 	return (
 		<div>
-			<div class="absolute left-0 top-0 z-20">
-				<Button
-					text={isModalOpen() ? 'Close Settings' : 'Open Settings'}
-					onClick={toggleModal}
-				/>
+			<div class='absolute left-0 top-0 z-20'>
+				<Button isPressed={isMainMenu} onClick={toggleMainMenu}>
+					{isMainMenu() ? playSvg() : pauseSvg()}
+				</Button>
 			</div>
-			<div class="fixed inset-0 z-10 flex justify-center items-center">
-				<div class="p-5 w-1/2 h-1/2 flex flex-col justify-center items-center text-xl">
-					{getBrowserName()}
-					{getBrowserName() === 'Firefox' ? ' Main Thread' : ' Worker Thread'}
-				</div>
-			</div>
-			<Show when={isModalOpen()}>
+
+			<Show when={isMainMenu()}>
 				<Modal>
 					<SettingsMenu />
 				</Modal>
 			</Show>
+			<Show when={isGameInfo()}>
+				<GameInfoModal />
+			</Show>
 
 			<main
+				class={'absolute' + (isMainMenu() ? ' blur-sm' : '')}
 				style={{
-					transform: `scaleX(${scaleX()}) scaleY(${scaleY()})`,
+					transform: `scaleX(${store.scaleX}) scaleY(${store.scaleY})`,
 					width: numberToPixels(baseWidth()),
 					height: numberToPixels(baseHeight()),
-					position: 'absolute',
 					top: numberToPixels((height() - baseHeight()) / 2),
-					left: numberToPixels((width() - baseWidth()) / 2), // center the canvas
-				}}
-			>
+					left: numberToPixels((width() - baseWidth()) / 2) // center the canvas
+				}}>
 				<Background />
-				{/* <Foreground /> */}
+				<Foreground />
 			</main>
 		</div>
 	)

@@ -1,4 +1,4 @@
-//TODO find better wat to do exhaustive checksF
+//TODO find a non ugly way of doing exhaustive checks
 
 interface StartMessage {
 	type: 'start'
@@ -142,12 +142,7 @@ type CanvasContext = {
 	imageCopyX: number
 }
 
-function updatePosition(
-	current: number,
-	other: number,
-	delta: number,
-	speedMultiplier: number
-) {
+function updatePosition(current: number, other: number, delta: number, speedMultiplier: number) {
 	const newX = current - 100 * ((delta / 1000) * speed * speedMultiplier)
 	if (newX + width < 0) {
 		return other + width
@@ -155,43 +150,33 @@ function updatePosition(
 	return newX
 }
 
-function animate(currentTime: number, shouldLoop: boolean = true) {
+function animate(currentTime: number, isAuto: boolean = true) {
 	let delta = currentTime - prevTime
 
 	Object.keys(canvasMap).forEach(id => {
 		const { context, imageBitmap, speedMultiplier } = canvasMap[id]
-		canvasMap[id].imageX = updatePosition(
-			canvasMap[id].imageX,
-			canvasMap[id].imageCopyX,
-			delta,
-			speedMultiplier
-		)
-		canvasMap[id].imageCopyX = updatePosition(
-			canvasMap[id].imageCopyX,
-			canvasMap[id].imageX,
-			delta,
-			speedMultiplier
-		)
+		if (isAuto) {
+			canvasMap[id].imageX = updatePosition(
+				canvasMap[id].imageX,
+				canvasMap[id].imageCopyX,
+				delta,
+				speedMultiplier
+			)
+			canvasMap[id].imageCopyX = updatePosition(
+				canvasMap[id].imageCopyX,
+				canvasMap[id].imageX,
+				delta,
+				speedMultiplier
+			)
+		}
 		context.clearRect(0, 0, width, height)
-		context.drawImage(
-			imageBitmap,
-			canvasMap[id].imageX,
-			0,
-			width + widthOffset,
-			height
-		)
-		context.drawImage(
-			imageBitmap,
-			canvasMap[id].imageCopyX,
-			0,
-			width + widthOffset,
-			height
-		)
+		context.drawImage(imageBitmap, canvasMap[id].imageX, 0, width + widthOffset, height)
+		context.drawImage(imageBitmap, canvasMap[id].imageCopyX, 0, width + widthOffset, height)
 	})
 
 	prevTime = currentTime
 
-	if (shouldLoop) animationFrameId = requestAnimationFrame(animate)
+	if (isAuto) animationFrameId = requestAnimationFrame(animate)
 }
 
 const canvasMap: Record<string, CanvasContext> = {}
@@ -210,14 +195,9 @@ self.onmessage = function (event: MessageEvent<WorkerMessageData>) {
 		const { type } = event.data
 
 		if (type === 'init') {
-			const {
-				canvasId,
-				offscreen,
-				imageBitmap,
-				canvasHeight,
-				canvasWidth,
-				speedMultiplier,
-			} = event.data
+			const { canvasId, offscreen, imageBitmap, canvasHeight, canvasWidth, speedMultiplier } =
+				event.data
+			if (!canvasId) throw new Error('canvas id is required')
 			const ctx = offscreen.getContext('2d')!
 			canvasMap[canvasId] = {
 				offscreen: offscreen,
@@ -225,7 +205,7 @@ self.onmessage = function (event: MessageEvent<WorkerMessageData>) {
 				context: ctx,
 				speedMultiplier,
 				imageX: 0,
-				imageCopyX: canvasWidth,
+				imageCopyX: canvasWidth
 			}
 			height = canvasHeight
 			width = canvasWidth
